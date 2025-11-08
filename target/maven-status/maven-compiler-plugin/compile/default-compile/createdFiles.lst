@@ -1,0 +1,5 @@
+com\attendance\FaceRegister.class
+com\attendance\MainServer.class
+com\attendance\AttendanceRecord.class
+com\attendance\AttendanceService.class
+com\attendance\FaceRecognizer.class
