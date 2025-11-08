@@ -19,7 +19,7 @@
   </properties>
 
   <dependencies>
-    <!-- Example dependencies, adjust as needed -->
+    <!-- OpenCV Java binding -->
     <dependency>
       <groupId>org.openpnp</groupId>
       <artifactId>opencv</artifactId>
@@ -53,6 +53,20 @@
             </goals>
             <configuration>
               <finalName>backend</finalName>
+
+              <!-- ✅ FIX: Exclude DLL/Native files to avoid EOFException -->
+              <filters>
+                <filter>
+                  <artifact>*:*</artifact>
+                  <excludes>
+                    <exclude>**/*.dll</exclude>
+                    <exclude>**/*.so</exclude>
+                    <exclude>**/*.dylib</exclude>
+                  </excludes>
+                </filter>
+              </filters>
+
+              <!-- ✅ Ensure correct main class in JAR manifest -->
               <transformers>
                 <transformer implementation="org.apache.maven.plugins.shade.resource.ManifestResourceTransformer">
                   <mainClass>com.attendance.MainServer</mainClass>
