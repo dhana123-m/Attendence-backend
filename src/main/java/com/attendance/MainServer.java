@@ -16,21 +16,21 @@ public class MainServer {
             Files.createFile(Paths.get("attendance.txt"));
         }
 
-        // Create HTTP server on port 8182
-        HttpServer server = HttpServer.create(new InetSocketAddress(8182), 0);
+        // ✅ Dynamic port support (Render uses $PORT, Docker uses 8080)
+        int port = Integer.parseInt(System.getenv().getOrDefault("PORT", "8080"));
+        HttpServer server = HttpServer.create(new InetSocketAddress(port), 0);
 
-        // ✅ Home route (CORS-enabled)
+        // ✅ Root route
         server.createContext("/", exchange -> {
             addCORS(exchange);
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
                 exchange.sendResponseHeaders(204, -1);
                 return;
             }
-            String response = "✅ Attendance Server Running (Port 8182)";
-            sendResponse(exchange, response);
+            sendResponse(exchange, "✅ Attendance Server Running (Port " + port + ")");
         });
 
-        // ✅ Register route (CORS-enabled)
+        // ✅ Register route
         server.createContext("/register", exchange -> {
             addCORS(exchange);
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
@@ -51,7 +51,7 @@ public class MainServer {
             }
         });
 
-        // ✅ Recognition route (CORS-enabled)
+        // ✅ Recognize route
         server.createContext("/recognize", exchange -> {
             addCORS(exchange);
             if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
@@ -73,16 +73,13 @@ public class MainServer {
             sendResponse(exchange, result);
         });
 
-        // Start server
+        // Start the server
         server.setExecutor(null);
         server.start();
-        System.out.println("✅ Attendance Server started on port 8182...");
-        System.out.println("🌐 Open: http://localhost:8182/");
-        System.out.println("🖼️ Register: POST http://localhost:8182/register");
-        System.out.println("🎥 Recognize: GET http://localhost:8182/recognize");
+        System.out.println("✅ Attendance Server started on port " + port + "...");
     }
 
-    // --- ✅ Add CORS headers (fixes browser blocking issues)
+    // --- ✅ Add CORS headers for all routes
     private static void addCORS(HttpExchange exchange) {
         Headers headers = exchange.getResponseHeaders();
         headers.set("Access-Control-Allow-Origin", "*");
@@ -90,7 +87,7 @@ public class MainServer {
         headers.set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept");
     }
 
-    // --- Utility: send simple text response
+    // --- Send plain text responses
     private static void sendResponse(HttpExchange exchange, String response) throws IOException {
         byte[] bytes = response.getBytes(StandardCharsets.UTF_8);
         exchange.getResponseHeaders().set("Content-Type", "text/plain; charset=UTF-8");
@@ -100,7 +97,7 @@ public class MainServer {
         }
     }
 
-    // --- Handle photo upload (multipart/form-data)
+    // --- Handle multipart image upload
     private static void handleFileUpload(HttpExchange exchange) throws IOException {
         String contentType = exchange.getRequestHeaders().getFirst("Content-type");
         if (contentType == null || !contentType.contains("multipart/form-data")) {
@@ -108,19 +105,16 @@ public class MainServer {
             return;
         }
 
-        // Extract boundary from Content-Type header
         String boundary = contentType.split("boundary=")[1];
         if (boundary == null) {
             sendResponse(exchange, "❌ Missing boundary in request.");
             return;
         }
 
-        // Read full request body
         InputStream is = exchange.getRequestBody();
         byte[] data = is.readAllBytes();
-        String body = new String(data, StandardCharsets.ISO_8859_1); // preserve raw bytes
+        String body = new String(data, StandardCharsets.ISO_8859_1);
 
-        // Parse name field
         String name = null;
         int nameIndex = body.indexOf("name=\"name\"");
         if (nameIndex != -1) {
@@ -134,7 +128,6 @@ public class MainServer {
             return;
         }
 
-        // Parse photo file bytes
         int fileIndex = body.indexOf("name=\"photo\"");
         if (fileIndex == -1) {
             sendResponse(exchange, "❌ Missing photo file.");
@@ -143,10 +136,8 @@ public class MainServer {
 
         int fileStart = body.indexOf("\r\n\r\n", fileIndex) + 4;
         int fileEnd = body.indexOf("--" + boundary, fileStart) - 2;
-
         byte[] fileBytes = Arrays.copyOfRange(data, fileStart, fileEnd);
 
-        // Save the uploaded file
         Path filePath = Paths.get("known_faces", name + ".jpg");
         Files.write(filePath, fileBytes);
         sendResponse(exchange, "✅ Registered successfully as: " + name);
