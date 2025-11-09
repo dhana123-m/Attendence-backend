@@ -5,8 +5,16 @@ import org.opencv.imgcodecs.Imgcodecs;
 import org.opencv.imgproc.Imgproc;
 import org.opencv.objdetect.CascadeClassifier;
 import org.opencv.videoio.VideoCapture;
+
 import java.io.File;
 
+/*
+  Simple recognizer strategy for the demo:
+  - Detect a face using Haar Cascade
+  - Capture an image from camera and compare it to files in known_faces
+  - For simplicity this demo uses pixel-based comparison of resized grayscale images
+    (This is NOT production-grade; for better results use face descriptors + LBPH/Fisher/Deep models)
+*/
 public class FaceRecognizer {
     static { System.loadLibrary(org.opencv.core.Core.NATIVE_LIBRARY_NAME); }
 
@@ -18,20 +26,15 @@ public class FaceRecognizer {
             return "❌ Face detector not found (models/haarcascade_frontalface_default.xml)";
         }
 
-        // Try to capture image (for local mode)
-        Mat frame = new Mat();
         VideoCapture cap = new VideoCapture(0);
-        boolean hasCamera = cap.isOpened();
-        if (hasCamera) {
-            cap.read(frame);
-            cap.release();
-        } else {
-            // ✅ Render fallback: use test image instead of camera
-            System.out.println("⚙️ No camera found — using fallback image: input.jpg");
-            frame = Imgcodecs.imread("input.jpg");
+        if (!cap.isOpened()) {
+            return "⚠️ Camera not available.";
         }
 
-        if (frame.empty()) return "❌ No image captured or loaded.";
+        Mat frame = new Mat();
+        boolean grabbed = cap.read(frame);
+        cap.release();
+        if (!grabbed || frame.empty()) return "❌ No image captured.";
 
         Mat gray = new Mat();
         Imgproc.cvtColor(frame, gray, Imgproc.COLOR_BGR2GRAY);
@@ -40,7 +43,8 @@ public class FaceRecognizer {
         detector.detectMultiScale(gray, faces);
         if (faces.empty()) return "❌ No face detected. Please try again.";
 
-        Rect r = faces.toArray()[0];
+        // For simplicity: use the first detected face ROI; resize and compare to known images
+        org.opencv.core.Rect r = faces.toArray()[0];
         Mat face = new Mat(gray, r);
         Imgproc.resize(face, face, new Size(100, 100));
 
@@ -56,6 +60,7 @@ public class FaceRecognizer {
             if (k.empty()) continue;
             Imgproc.resize(k, k, new Size(100, 100));
 
+            // simple pixel difference
             Mat diff = new Mat();
             Core.absdiff(face, k, diff);
             Scalar s = Core.sumElems(diff);
@@ -66,9 +71,10 @@ public class FaceRecognizer {
             }
         }
 
+        // threshold is heuristic - adjust as needed
         double threshold = 1500000.0;
         if (bestName != null && bestScore < threshold) {
-            return bestName.replaceFirst("\\.jpg$", "").replaceFirst("\\.png$", "");
+            return bestName.replaceFirst("\\.jpg$", "").replaceFirst("\\.png$", ""); // matched name
         } else {
             return "Unknown";
         }
