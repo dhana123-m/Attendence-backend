@@ -19,14 +19,25 @@ public class MainServer {
         // Create HTTP server on port 8182
         HttpServer server = HttpServer.create(new InetSocketAddress(8182), 0);
 
-        // ✅ Home route
+        // ✅ Home route (CORS-enabled)
         server.createContext("/", exchange -> {
+            addCORS(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
             String response = "✅ Attendance Server Running (Port 8182)";
             sendResponse(exchange, response);
         });
 
-        // ✅ Register route (POST with image upload)
+        // ✅ Register route (CORS-enabled)
         server.createContext("/register", exchange -> {
+            addCORS(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
             if (!"POST".equalsIgnoreCase(exchange.getRequestMethod())) {
                 sendResponse(exchange, "❌ Only POST method allowed");
                 return;
@@ -40,8 +51,14 @@ public class MainServer {
             }
         });
 
-        // ✅ Recognition route
+        // ✅ Recognition route (CORS-enabled)
         server.createContext("/recognize", exchange -> {
+            addCORS(exchange);
+            if ("OPTIONS".equalsIgnoreCase(exchange.getRequestMethod())) {
+                exchange.sendResponseHeaders(204, -1);
+                return;
+            }
+
             String result;
             try {
                 result = FaceRecognizer.recognizeOnce();
@@ -69,6 +86,14 @@ public class MainServer {
         System.out.println("🌐 Open: http://localhost:8182/");
         System.out.println("🖼️ Register: POST http://localhost:8182/register");
         System.out.println("🎥 Recognize: GET http://localhost:8182/recognize");
+    }
+
+    // --- ✅ Add CORS headers for cross-origin requests
+    private static void addCORS(HttpExchange exchange) {
+        Headers headers = exchange.getResponseHeaders();
+        headers.add("Access-Control-Allow-Origin", "*");
+        headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        headers.add("Access-Control-Allow-Headers", "Content-Type");
     }
 
     // --- Utility: send simple text response
