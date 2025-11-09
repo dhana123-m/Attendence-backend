@@ -59,21 +59,15 @@ public class MainServer {
                 return;
             }
 
+            System.out.println("🔍 Recognition request received...");
+
             String result;
             try {
                 result = FaceRecognizer.recognizeOnce();
+                System.out.println("🎯 Recognition result: " + result);
             } catch (Exception e) {
                 e.printStackTrace();
                 result = "❌ Error during recognition: " + e.getMessage();
-            }
-
-            if (result == null || result.isEmpty()) result = "❌ No response generated.";
-
-            if (!result.startsWith("❌") && !"Unknown".equals(result) && !result.startsWith("Error")) {
-                Files.writeString(Paths.get("attendance.txt"),
-                        result + System.lineSeparator(),
-                        StandardCharsets.UTF_8,
-                        StandardOpenOption.APPEND);
             }
 
             sendResponse(exchange, result);
@@ -88,12 +82,12 @@ public class MainServer {
         System.out.println("🎥 Recognize: GET http://localhost:8182/recognize");
     }
 
-    // --- ✅ Add CORS headers for cross-origin requests
+    // --- ✅ Add CORS headers (fixes browser blocking issues)
     private static void addCORS(HttpExchange exchange) {
         Headers headers = exchange.getResponseHeaders();
-        headers.add("Access-Control-Allow-Origin", "*");
-        headers.add("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
-        headers.add("Access-Control-Allow-Headers", "Content-Type");
+        headers.set("Access-Control-Allow-Origin", "*");
+        headers.set("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+        headers.set("Access-Control-Allow-Headers", "Origin, Content-Type, Accept");
     }
 
     // --- Utility: send simple text response
